@@ -1,0 +1,11 @@
+{
+  "name": "marino-stats",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "poll": "node scripts/poll.js"
+  },
+  "dependencies": {
+    "@libsql/client": "latest"
+  }
+}
