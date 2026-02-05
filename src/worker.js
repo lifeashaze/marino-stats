@@ -120,6 +120,9 @@ async function insertCounts(client, rows, fetchedAt) {
 }
 
 export default {
+  async fetch() {
+    return new Response("OK", { status: 200 });
+  },
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(run(env));
   }
