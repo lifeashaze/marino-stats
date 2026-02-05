@@ -65,6 +65,45 @@ async function upsertLocations(client, rows) {
   }
 }
 
+async function fetchLatestCounts(client, locationIds) {
+  if (locationIds.length === 0) {
+    return new Map();
+  }
+
+  const placeholders = locationIds.map(() => "?").join(",");
+  const sql = `
+    SELECT lc.location_id AS locationId,
+           lc.last_count AS lastCount,
+           lc.last_updated_at AS lastUpdated
+    FROM location_counts lc
+    JOIN (
+      SELECT location_id, MAX(fetched_at) AS max_fetched
+      FROM location_counts
+      WHERE location_id IN (${placeholders})
+      GROUP BY location_id
+    ) latest
+      ON lc.location_id = latest.location_id
+     AND lc.fetched_at = latest.max_fetched
+  `;
+
+  const result = await client.execute({ sql, args: locationIds });
+  const latest = new Map();
+
+  for (const row of result.rows || []) {
+    const [rawLocationId, rawLastCount, rawLastUpdated] = Array.isArray(row)
+      ? row
+      : [row.locationId, row.lastCount, row.lastUpdated];
+    const locationId = Number(rawLocationId);
+    if (!Number.isFinite(locationId)) continue;
+    latest.set(locationId, {
+      lastCount: Number(rawLastCount),
+      lastUpdated: rawLastUpdated
+    });
+  }
+
+  return latest;
+}
+
 async function insertCounts(client, rows, fetchedAt) {
   const statements = rows.map((row) => ({
     sql: "INSERT OR IGNORE INTO location_counts (location_id, last_count, last_updated_at, fetched_at) VALUES (?, ?, ?, ?)",
@@ -114,7 +153,20 @@ async function run(env) {
 
   await ensureSchema(client);
   await upsertLocations(client, rows);
-  const { inserted, received } = await insertCounts(client, rows, fetchedAt);
+  const uniqueLocationIds = [...new Set(rows.map((row) => row.locationId))];
+  const latestByLocation = await fetchLatestCounts(client, uniqueLocationIds);
+  const changedRows = rows.filter((row) => {
+    const latest = latestByLocation.get(row.locationId);
+    if (!latest) return true;
+    return row.lastCount !== latest.lastCount || row.lastUpdated !== latest.lastUpdated;
+  });
+
+  if (changedRows.length === 0) {
+    console.log("No changes detected; skipping insert.");
+    return;
+  }
+
+  const { inserted, received } = await insertCounts(client, changedRows, fetchedAt);
 
   console.log(`Inserted ${inserted} rows (received ${received}).`);
 }
