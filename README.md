@@ -18,6 +18,7 @@ Table: `facility_counts`
 - `location_name` (TEXT)
 - `last_count` (INTEGER)
 - `last_updated_at` (TEXT)
+- `fetched_at` (TEXT)
 
 Primary key: `(location_name, last_updated_at)`
 

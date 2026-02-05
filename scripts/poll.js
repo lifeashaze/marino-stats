@@ -83,18 +83,26 @@ async function main() {
     return;
   }
 
+  const fetchedAt = new Date().toISOString();
+
   const client = createClient({
     url: TURSO_DATABASE_URL,
     authToken: TURSO_AUTH_TOKEN
   });
 
   await client.execute(
-    "CREATE TABLE IF NOT EXISTS facility_counts (location_name TEXT NOT NULL, last_count INTEGER NOT NULL, last_updated_at TEXT NOT NULL, PRIMARY KEY (location_name, last_updated_at))"
+    "CREATE TABLE IF NOT EXISTS facility_counts (location_name TEXT NOT NULL, last_count INTEGER NOT NULL, last_updated_at TEXT NOT NULL, fetched_at TEXT NOT NULL, PRIMARY KEY (location_name, last_updated_at))"
   );
 
+  const tableInfo = await client.execute("PRAGMA table_info(facility_counts)");
+  const hasFetchedAt = tableInfo.rows.some((row) => row.name === "fetched_at");
+  if (!hasFetchedAt) {
+    await client.execute("ALTER TABLE facility_counts ADD COLUMN fetched_at TEXT");
+  }
+
   const statements = rows.map((row) => ({
-    sql: "INSERT OR IGNORE INTO facility_counts (location_name, last_count, last_updated_at) VALUES (?, ?, ?)",
-    args: [row.locationName, row.lastCount, row.lastUpdated]
+    sql: "INSERT OR IGNORE INTO facility_counts (location_name, last_count, last_updated_at, fetched_at) VALUES (?, ?, ?, ?)",
+    args: [row.locationName, row.lastCount, row.lastUpdated, fetchedAt]
   }));
 
   const results = await client.batch(statements);
