@@ -1,33 +1,53 @@
 # Marino Stats Poller
 
-Polls the Marino occupancy API every 10 minutes via GitHub Actions and stores
-only `LocationName`, `LastCount`, and `LastUpdatedDateAndTime` in Turso.
+Polls the Marino occupancy API every 10 minutes using a Cloudflare Worker
+Cron Trigger and stores location snapshots in Turso.
 
-## Setup
+## Setup (Cloudflare Workers)
 
 1. Create a Turso database (or use an existing one).
-2. Add GitHub Actions secrets in this repo:
-   - `TURSO_DATABASE_URL`
+2. Create a Cloudflare Worker and set secrets:
+   - `TURSO_DATABASE_URL` (or `TURSO_URL`)
    - `TURSO_AUTH_TOKEN`
-3. (Optional) Trigger the workflow manually from the Actions tab to test.
+   - Example: `npx wrangler secret put TURSO_DATABASE_URL`
+   - Example: `npx wrangler secret put TURSO_AUTH_TOKEN`
+3. Deploy the worker:
+   - `npm install`
+   - `npm run deploy`
 
 ## Data model
 
-Table: `facility_counts`
+Table: `locations`
 
+- `location_id` (INTEGER, primary key)
 - `location_name` (TEXT)
+- `facility_name` (TEXT, optional)
+
+Table: `location_counts`
+
+- `location_id` (INTEGER)
 - `last_count` (INTEGER)
 - `last_updated_at` (TEXT)
 - `fetched_at` (TEXT)
 
-Primary key: `(location_name, last_updated_at)`
+Primary key: `(location_id, fetched_at)`
+
+## Notes
+
+- The schedule is configured in `wrangler.toml` as `*/10 * * * *` (UTC).
 
 ## Local run (optional)
 
+Create a `.dev.vars` file:
+
 ```bash
-export TURSO_DATABASE_URL="..."
-export TURSO_AUTH_TOKEN="..."
-npm install
-npm run poll
+TURSO_DATABASE_URL=... # or TURSO_URL
+TURSO_AUTH_TOKEN=...
 ```
-# marino-stats
+
+Then:
+
+```bash
+npm install
+npm run dev
+```

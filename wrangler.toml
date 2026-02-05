@@ -1,0 +1,6 @@
+name = "marino-stats-poller"
+main = "src/worker.js"
+compatibility_date = "2026-02-05"
+
+[triggers]
+crons = ["*/10 * * * *"]

@@ -3,9 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "poll": "node scripts/poll.js"
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@libsql/client": "latest"
+  },
+  "devDependencies": {
+    "wrangler": "latest"
   }
 }
